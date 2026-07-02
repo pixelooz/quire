@@ -5,11 +5,16 @@ A lightweight code editor, built because I wanted to learn how to build one.
 Still being built, trying to get text rendering and highlights to work before 
 adding some neovim like features, such as Modes and completions.
 
+## Known Bugs
+1. Delete is not working properly.
+2. If there is an error on message bar, and you keep pressing the key-combo that caused the issue, the error disappears; fix that.
+
 ## Roadmap
 0. Provide proper documentation.
 1. ~~Syntax Highlighting.~~ ***Done***
 2. ~~Add logging ( use the `log` crate ).~~
 3. Use the definition field, that helps highlight function names, to highlight `enum`, `struct`, etc. identifiers. 
+4. Automatic save (simple for now - if no event is recorded in the main event loop for 5 secs then save).
 
 ## Features in Current Scope (Not in any particular order).
 1. ~~Implement a efficient span based syntax highlighting.~~ ***Done***
