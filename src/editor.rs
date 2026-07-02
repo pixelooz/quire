@@ -374,7 +374,7 @@ where
                 Char('s') => self.save()?,
                 Char('x') => self.next_buffer(),
                 Char('q') => return Ok(self.handle_quit()),
-                Char('?') => self.show_help()?,
+                Char('7') => self.show_help()?,
                 Char('l') => {
                     self.renderer.set_redraw_idx(self.renderer.rowoff);
                     self.renderer.remove_msg();
