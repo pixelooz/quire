@@ -196,10 +196,10 @@ impl TextBuffer {
 
 impl TextBuffer {
     fn set_redraw_idx(&mut self, line: usize) {
-        if let Some(row_idx) = self.redraw_from {
-            if row_idx <= line {
-                return;
-            }
+        if let Some(row_idx) = self.redraw_from
+            && row_idx <= line
+        {
+            return;
         }
         self.redraw_from = Some(line)
     }
