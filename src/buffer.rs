@@ -200,8 +200,8 @@ impl TextBuffer {
             if row_idx <= line {
                 return;
             }
-            self.redraw_from = Some(line)
         }
+        self.redraw_from = Some(line)
     }
 
     pub fn col_idx(&self) -> usize {
