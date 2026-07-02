@@ -49,42 +49,70 @@ impl Document {
         Self { buffer, highlight }
     }
 
-    pub fn execute<W: Write>(&mut self, action: EditAction, renderer: &Renderer<W>) {
+    pub fn execute<W>(
+        &mut self,
+        edit_act: EditAction,
+        renderer: &Renderer<W>,
+    ) -> Option<&'static str>
+    where
+        W: Write,
+    {
         use EditAction::*;
-        match action {
-            Move(dir) => self.buffer.step(dir),
+        match edit_act {
+            Redo => (!self.buffer.redo()).then_some("Already at newest change"),
+            Undo => (!self.buffer.undo()).then_some("No older change"),
+            InsertChar(ch) => {
+                self.buffer.insert_char(ch);
+                None
+            }
+            InsertTab => {
+                self.buffer.insert_tab();
+                None
+            }
+            Move(dir) => {
+                self.buffer.step(dir);
+                None
+            }
             MovePage(dir) => {
                 self.buffer
                     .jump_page_up_down(dir, renderer.rowoff, renderer.rows());
+                None
             }
-            MoveToEdge(dir) => self.buffer.jump_to_edge(dir),
-            MoveByWord(dir) => self.buffer.step_by_word(dir),
-            MoveParagraph(dir) => self.buffer.jump_paragraphs(dir),
-            InsertChar(ch) => self.buffer.insert_char(ch),
-            InsertTab => self.buffer.insert_tab(),
-            InsertLine => self.buffer.insert_line(),
-            DeleteChar => self.buffer.delete_char(),
-            DeleteRightChar => self.buffer.delete_right_char(),
-            DeleteWord => self.buffer.delete_word(),
-            DeleteUntilLineEnd => self.buffer.delete_until_line_end(),
-            DeleteUntilLineHead => self.buffer.delete_until_line_head(),
-            Undo => {
-                if !self.buffer.undo() {
-                    log::debug!(
-                        target: "editor.rs/Document::execute",
-                        "undo returned false; modified={} curr_row={:?}",
-                        self.buffer.modified(), self.buffer.rows()[self.buffer.row_idx()]
-                    );
-                }
+            MoveParagraph(dir) => {
+                self.buffer.jump_paragraphs(dir);
+                None
             }
-            Redo => {
-                if !self.buffer.redo() {
-                    log::debug!(
-                        target: "editor.rs/Document::execute",
-                        "redo returned false; modified={} curr_row={:?}",
-                        self.buffer.modified(), self.buffer.rows()[self.buffer.row_idx()]
-                    );
-                }
+            MoveByWord(dir) => {
+                self.buffer.step_by_word(dir);
+                None
+            }
+            MoveToEdge(dir) => {
+                self.buffer.jump_to_edge(dir);
+                None
+            }
+            InsertLine => {
+                self.buffer.insert_line();
+                None
+            }
+            DeleteChar => {
+                self.buffer.delete_char();
+                None
+            }
+            DeleteRightChar => {
+                self.buffer.delete_right_char();
+                None
+            }
+            DeleteWord => {
+                self.buffer.delete_word();
+                None
+            }
+            DeleteUntilLineHead => {
+                self.buffer.delete_until_line_head();
+                None
+            }
+            DeleteUntilLineEnd => {
+                self.buffer.delete_until_line_end();
+                None
             }
         }
     }
@@ -219,13 +247,6 @@ where
             .update_from_buf(&self.documents[self.doc_idx].buffer);
     }
 
-    fn process_keypress(&mut self, seq: KeySeq) -> Result<EditStep> {
-        if seq.ctrl && seq.key == Key::Char('q') {
-            return Ok(EditStep::Quit);
-        }
-        Ok(EditStep::Continue)
-    }
-
     fn prompt<A>(&mut self, prompt_text: &str, cmd_empty: bool) -> Result<CommandResult>
     where
         A: Action,
@@ -243,10 +264,10 @@ where
 
     fn save(&mut self) -> Result<()> {
         if self.doc().buffer.filename() == "[No Name]" {
-            let result = self.prompt::<NoAction>("Save as: ", true)?;
+            let result = self.prompt::<NoAction>("save as: ", true)?;
             match result {
                 CommandResult::Canceled => {
-                    self.renderer.set_info_msg("Save canceled");
+                    self.renderer.set_info_msg("save canceled");
                     return Ok(());
                 }
                 CommandResult::Input(name) => {
@@ -265,12 +286,195 @@ where
     }
 
     fn search(&mut self) -> Result<()> {
-        self.prompt::<TextSearch>("Search: ", true)?;
+        self.prompt::<TextSearch>("search:", true)?;
         Ok(())
+    }
+
+    fn open_buffer(&mut self) -> Result<()> {
+        let result = self.prompt::<NoAction>("open:", true)?;
+
+        match result {
+            CommandResult::Input(path) => match TextBuffer::open(&path) {
+                Ok(buffer) => {
+                    let doc = Document::new(buffer);
+                    self.documents.push(doc);
+                    self.switch_buffer(self.documents.len() - 1);
+                }
+                Err(err) => {
+                    self.renderer
+                        .set_error_msg(format!("Failed to open {}: {}", path, err));
+                }
+            },
+            CommandResult::Canceled => self.renderer.set_info_msg("open cancelled"),
+        }
+        Ok(())
+    }
+
+    fn switch_buffer(&mut self, idx: usize) {
+        let len = self.documents.len();
+        if len <= 1 {
+            return self
+                .renderer
+                .set_info_msg("No other buffer is opened!");
+        }
+        debug_assert!(idx < len);
+        self.doc_idx = idx;
+
+        // TODO: remember scroll position for each open buffer.
+        self.renderer.rowoff = 0;
+        self.renderer.coloff = 0;
+        // A full force redraw because the entire context has been swapped.
+        self.renderer.set_redraw_idx(0);
+    }
+
+    fn next_buffer(&mut self) {
+        let mut next = self.doc_idx + 1;
+        if self.doc_idx == self.documents.len() - 1 {
+            next = 0; // Wrap around to the first buffer.
+        }
+        self.switch_buffer(next);
+    }
+
+    fn prev_buffer(&mut self) {
+        let mut prev = self.doc_idx - 1;
+        if self.doc_idx == 0 {
+            prev = self.documents.len() - 1;
+        }
+        self.switch_buffer(prev);
     }
 
     fn show_help(&mut self) -> Result<()> {
         self.renderer.set_info_msg(HELP);
         Ok(())
+    }
+    fn process_keypress(&mut self, seq: KeySeq) -> Result<EditStep> {
+        use Key::*;
+
+        let prev_cursor = self.doc().buffer.cursor();
+        let mut action: Option<EditAction> = None;
+
+        match seq {
+            KeySeq { alt: true, key, .. } => match key {
+                Char('f') => action = Some(EditAction::MoveByWord(CursorDir::Right)),
+                Char('b') => action = Some(EditAction::MoveByWord(CursorDir::Left)),
+                Char('v') => action = Some(EditAction::MovePage(CursorDir::Up)),
+                Char('n') => action = Some(EditAction::MoveParagraph(CursorDir::Down)),
+                Char('p') => action = Some(EditAction::MoveParagraph(CursorDir::Up)),
+                Char('x') => self.prev_buffer(),
+                Char('<') | Up => action = Some(EditAction::MoveToEdge(CursorDir::Up)),
+                Char('>') | Down => action = Some(EditAction::MoveToEdge(CursorDir::Down)),
+                Left => action = Some(EditAction::MoveToEdge(CursorDir::Left)),
+                Right => action = Some(EditAction::MoveToEdge(CursorDir::Right)),
+                _ => self.handle_unmapped(&seq),
+            },
+            // Ctrl Commands: Editor Actions & Fast Movement
+            KeySeq { ctrl: true, key, .. } => match key {
+                // Editor State Commands
+                Char('o') => self.open_buffer()?,
+                Char('s') => self.save()?,
+                Char('x') => self.next_buffer(),
+                Char('q') => return Ok(self.handle_quit()),
+                Char('?') => self.show_help()?,
+                Char('l') => {
+                    self.renderer.set_redraw_idx(self.renderer.rowoff);
+                    self.renderer.remove_msg();
+                    self.status_bar.redraw = true;
+                }
+                Char('g') => self.search()?,
+
+                // Buffer Edits
+                Char('u') => action = Some(EditAction::Undo),
+                Char('r') => action = Some(EditAction::Redo),
+                Char('h') => action = Some(EditAction::DeleteChar), // Same as Backspace
+                Char('d') => action = Some(EditAction::DeleteRightChar),
+                Char('w') => action = Some(EditAction::DeleteWord),
+                Char('k') => action = Some(EditAction::DeleteUntilLineEnd),
+                Char('j') => action = Some(EditAction::DeleteUntilLineHead),
+                Char('i') => action = Some(EditAction::InsertTab),
+                Char('m') => action = Some(EditAction::InsertLine), // Same as Enter
+
+                // Buffer Movement
+                Char('p') => action = Some(EditAction::Move(CursorDir::Up)),
+                Char('n') => action = Some(EditAction::Move(CursorDir::Down)),
+                Char('b') => action = Some(EditAction::Move(CursorDir::Left)),
+                Char('f') => action = Some(EditAction::Move(CursorDir::Right)),
+                Char('v') | Char(']') => action = Some(EditAction::MovePage(CursorDir::Down)),
+                Char('a') => action = Some(EditAction::MoveToEdge(CursorDir::Left)),
+                Char('e') => action = Some(EditAction::MoveToEdge(CursorDir::Right)),
+
+                // Ctrl + Arrows (Semantic movement mapping for modern keyboards)
+                Left => action = Some(EditAction::MoveByWord(CursorDir::Left)),
+                Right => action = Some(EditAction::MoveByWord(CursorDir::Right)),
+                Up => action = Some(EditAction::MoveParagraph(CursorDir::Up)),
+                Down => action = Some(EditAction::MoveParagraph(CursorDir::Down)),
+
+                _ => self.handle_unmapped(&seq),
+            },
+            // Unmodified Keys: Insertion & Standard Arrows
+            KeySeq { key, .. } => match key {
+                Char(ch) => action = Some(EditAction::InsertChar(ch)),
+                Enter => action = Some(EditAction::InsertLine),
+                Backspace => action = Some(EditAction::DeleteChar),
+                Delete => action = Some(EditAction::DeleteRightChar),
+                Tab => action = Some(EditAction::InsertTab),
+
+                Right => action = Some(EditAction::Move(CursorDir::Right)),
+                Left => action = Some(EditAction::Move(CursorDir::Left)),
+                Up => action = Some(EditAction::Move(CursorDir::Up)),
+                Down => action = Some(EditAction::Move(CursorDir::Down)),
+
+                Home => action = Some(EditAction::MoveToEdge(CursorDir::Left)),
+                End => action = Some(EditAction::MoveToEdge(CursorDir::Right)),
+                PageUp => action = Some(EditAction::MovePage(CursorDir::Up)),
+                PageDown => action = Some(EditAction::MovePage(CursorDir::Down)),
+
+                Esc | Unknown => {}
+            },
+        }
+
+        // --- Execution Phase ---
+        if let Some(edit_act) = action
+            && let Some(msg) = self.documents[self.doc_idx].execute(edit_act, &self.renderer)
+        {
+            self.renderer.set_info_msg(msg);
+        }
+        let curr_doc = self.doc_mut();
+
+        if let Some(redraw_row) = curr_doc.buffer.commit_edit() {
+            curr_doc.highlight.needs_update = true;
+            self.renderer.set_redraw_idx(redraw_row);
+        }
+        if self.doc().buffer.cursor() != prev_cursor {
+            self.renderer.cursor_moved = true;
+        }
+        self.quitting = false;
+        Ok(EditStep::Continue)
+    }
+
+    fn handle_quit(&mut self) -> EditStep {
+        let has_unsaved = self.documents.iter().any(|d| d.buffer.modified());
+        if !has_unsaved || self.quitting {
+            return EditStep::Quit;
+        }
+        self.quitting = true;
+        self.renderer
+            .set_error_msg("There are unsaved changes! Press ^Q again to quit");
+        EditStep::Continue
+    }
+
+    fn handle_unmapped(&mut self, seq: &KeySeq) {
+        let modifier = if seq.ctrl {
+            "^"
+        } else if seq.alt {
+            "Alt-"
+        } else {
+            ""
+        };
+        let key_str = match seq.key {
+            Key::Char(ch) => ch.to_string(),
+            _ => format!("{:?}", seq.key),
+        };
+        self.renderer
+            .set_error_msg(format!("Key '{}{}' not mapped", modifier, key_str));
     }
 }
