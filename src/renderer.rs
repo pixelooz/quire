@@ -551,13 +551,6 @@ impl<W: Write> Renderer<W> {
             && let Some(msg) = &self.status_msg
         {
             self.draw_message_bar(&mut canvas, msg)?;
-        } else {
-            // If there is no message, clear the bottom row just in case.
-            queue!(
-                canvas,
-                MoveTo(0, self.num_rows as u16 + 1),
-                Clear(ClearType::UntilNewLine)
-            )?;
         }
         let col_idx = buffer.col_idx();
         let row_idx = buffer.row_idx();

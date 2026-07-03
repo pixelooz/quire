@@ -143,7 +143,7 @@ impl TextSearch {
             SearchDirection::Forward => self.raw_buf_str[offset..]
                 .find(query)
                 .map(|idx| idx + offset)
-                .or_else(|| self.raw_buf_str[..offset].find(query)),
+                .or_else(|| self.raw_buf_str.find(query)),
         }
     }
 

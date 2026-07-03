@@ -305,7 +305,7 @@ impl TextBuffer {
         let col_idx = self.col_idx - 1;
         let deleted = self.curr_row().char_at(col_idx);
         let cursor = CursorPosition {
-            col_idx: self.col_idx,
+            col_idx: self.col_idx - 1,
             row_idx: self.row_idx,
         };
         self.new_diff(EditDiff::DeleteChar {
