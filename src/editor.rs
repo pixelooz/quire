@@ -375,12 +375,11 @@ where
 
         match seq {
             KeySeq { alt: true, key, .. } => match key {
-                Char('f') => action = Some(EditAction::MoveByWord(CursorDir::Right)),
+                Char('w') => action = Some(EditAction::MoveByWord(CursorDir::Right)),
                 Char('b') => action = Some(EditAction::MoveByWord(CursorDir::Left)),
-                Char('v') => action = Some(EditAction::MovePage(CursorDir::Up)),
-                Char('n') => action = Some(EditAction::MoveParagraph(CursorDir::Down)),
-                Char('p') => action = Some(EditAction::MoveParagraph(CursorDir::Up)),
-                Char('x') => self.prev_buffer(),
+                Char('p') => action = Some(EditAction::MovePage(CursorDir::Up)),
+                Char(']') => action = Some(EditAction::MoveParagraph(CursorDir::Down)),
+                Char('[') => action = Some(EditAction::MoveParagraph(CursorDir::Up)),
                 Char('<') | Up => action = Some(EditAction::MoveToEdge(CursorDir::Up)),
                 Char('>') | Down => action = Some(EditAction::MoveToEdge(CursorDir::Down)),
                 Left => action = Some(EditAction::MoveToEdge(CursorDir::Left)),
@@ -392,10 +391,11 @@ where
                 // Editor State Commands
                 Char('o') => self.open_buffer()?,
                 Char('s') => self.save()?,
-                Char('x') => self.next_buffer(),
+                Char('b') => self.prev_buffer(),
+                Char('f') => self.next_buffer(),
                 Char('q') => return Ok(self.handle_quit()),
                 Char('7') => self.show_help()?,
-                Char('l') => {
+                Char('t') => {
                     self.renderer.set_redraw_idx(self.renderer.rowoff);
                     self.renderer.remove_msg();
                     self.status_bar.redraw = true;
@@ -405,19 +405,18 @@ where
                 // Buffer Edits
                 Char('u') => action = Some(EditAction::Undo),
                 Char('r') => action = Some(EditAction::Redo),
-                Char('h') => action = Some(EditAction::DeleteChar), // Same as Backspace
-                Char('d') => action = Some(EditAction::DeleteRightChar),
+                Char('<') => action = Some(EditAction::DeleteChar), // Same as Backspace
+                Char('>') => action = Some(EditAction::DeleteRightChar),
                 Char('w') => action = Some(EditAction::DeleteWord),
                 Char('k') => action = Some(EditAction::DeleteUntilLineEnd),
                 Char('j') => action = Some(EditAction::DeleteUntilLineHead),
                 Char('i') => action = Some(EditAction::InsertTab),
-                Char('m') => action = Some(EditAction::InsertLine), // Same as Enter
 
                 // Buffer Movement
                 Char('p') => action = Some(EditAction::Move(CursorDir::Up)),
                 Char('n') => action = Some(EditAction::Move(CursorDir::Down)),
-                Char('b') => action = Some(EditAction::Move(CursorDir::Left)),
-                Char('f') => action = Some(EditAction::Move(CursorDir::Right)),
+                Char('h') => action = Some(EditAction::Move(CursorDir::Left)),
+                Char('l') => action = Some(EditAction::Move(CursorDir::Right)),
                 Char('v') | Char(']') => action = Some(EditAction::MovePage(CursorDir::Down)),
                 Char('a') => action = Some(EditAction::MoveToEdge(CursorDir::Left)),
                 Char('e') => action = Some(EditAction::MoveToEdge(CursorDir::Right)),
@@ -430,7 +429,6 @@ where
 
                 _ => self.handle_unmapped(&seq),
             },
-            // Unmodified Keys: Insertion & Standard Arrows
             KeySeq { key, .. } => match key {
                 Char(ch) => action = Some(EditAction::InsertChar(ch)),
                 Enter => action = Some(EditAction::InsertLine),
