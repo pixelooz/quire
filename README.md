@@ -6,12 +6,12 @@ Still being built, trying to get text rendering and highlights to work before
 adding some neovim like features, such as Modes and completions.
 
 ## Known Bugs
-1. Delete is not working properly.
-2. If there is an error on message bar, and you keep pressing the key-combo that caused the issue, the error disappears; fix that.
-3. There is an issue with the edit-diff/history.
-4. If the search only has one match or none, there seems to be a off-by-one bug.
-    - The search string disappears for no match.
-    - The highlihting disappears for one match and if right arrow is clicked multiple times then it returns to the same match.
+1. ~~Delete is not working properly.~~
+2. Fix permanent message on the message bar.
+3. ~~There is an issue with the edit-diff/history.~~
+4. ~~If the search only has one match or none, there seems to be a off-by-one bug.~~
+    - ~~The search string disappears for no match.~~
+    - ~~The highlihting disappears for one match and if right arrow is clicked multiple times then it returns to the same match.~~
 
 ## Roadmap
 0. Provide proper documentation.

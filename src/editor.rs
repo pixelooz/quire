@@ -197,8 +197,10 @@ where
 
     pub fn edit(&mut self) -> Result<()> {
         self.canvas_init()?;
-        while self.step()? == EditStep::Continue {
-            // Keep spinning the event loop
+        loop {
+            if self.step()? != EditStep::Continue {
+                break;
+            }
         }
         Ok(())
     }
@@ -394,7 +396,7 @@ where
                 Char('b') => self.prev_buffer(),
                 Char('f') => self.next_buffer(),
                 Char('q') => return Ok(self.handle_quit()),
-                Char('7') => self.show_help()?,
+                Char('7') | Char('?') => self.show_help()?,
                 Char('t') => {
                     self.renderer.set_redraw_idx(self.renderer.rowoff);
                     self.renderer.remove_msg();
@@ -408,13 +410,13 @@ where
                 Char('<') => action = Some(EditAction::DeleteChar), // Same as Backspace
                 Char('>') => action = Some(EditAction::DeleteRightChar),
                 Char('w') => action = Some(EditAction::DeleteWord),
-                Char('k') => action = Some(EditAction::DeleteUntilLineEnd),
-                Char('j') => action = Some(EditAction::DeleteUntilLineHead),
+                Char('n') => action = Some(EditAction::DeleteUntilLineEnd),
+                Char('p') => action = Some(EditAction::DeleteUntilLineHead),
                 Char('i') => action = Some(EditAction::InsertTab),
 
                 // Buffer Movement
-                Char('p') => action = Some(EditAction::Move(CursorDir::Up)),
-                Char('n') => action = Some(EditAction::Move(CursorDir::Down)),
+                Char('k') => action = Some(EditAction::Move(CursorDir::Up)),
+                Char('j') => action = Some(EditAction::Move(CursorDir::Down)),
                 Char('h') => action = Some(EditAction::Move(CursorDir::Left)),
                 Char('l') => action = Some(EditAction::Move(CursorDir::Right)),
                 Char('v') | Char(']') => action = Some(EditAction::MovePage(CursorDir::Down)),

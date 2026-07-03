@@ -33,7 +33,7 @@ the function does.
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    file: Option<String>,
+    paths: Vec<String>,
 }
 
 fn setup_log_path() -> Option<File> {
@@ -77,8 +77,8 @@ fn main() -> Result<()> {
 
     let event_stream = iter::from_fn(|| Some(term.read_event()));
 
-    let mut editor = if let Some(path) = args.file {
-        Editor::open(event_stream, io::stdout(), size, &[path])?
+    let mut editor = if !args.paths.is_empty() {
+        Editor::open(event_stream, io::stdout(), size, &args.paths)?
     } else {
         Editor::new(event_stream, io::stdout(), size)?
     };
