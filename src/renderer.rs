@@ -1,4 +1,4 @@
-use std::{io::Write, time::SystemTime};
+use std::{cmp, io::Write, time::SystemTime};
 
 use anyhow::{Context, Result, bail};
 use crossterm::{
@@ -14,6 +14,7 @@ use unicode_width::UnicodeWidthChar;
 use crate::{
     buffer::TextBuffer,
     color::{self, TextElement, Theme, ThemeElement},
+    help::HELP,
     highlight::Highlighting,
     row::Row,
     status_bar::StatusBar,
@@ -365,6 +366,80 @@ impl<W: Write> Renderer<W> {
             }
             queue!(writer, Clear(ClearType::UntilNewLine))?;
         }
+        Ok(())
+    }
+
+    pub fn render_help(&mut self) -> Result<()> {
+        let help_lines: Vec<_> = HELP
+            .split('\n')
+            .skip_while(|s| !s.contains(':'))
+            .map(|s| s.trim_start())
+            .collect();
+
+        let vertical_margin = if help_lines.len() < self.rows() {
+            (self.rows() - help_lines.len()) / 2
+        } else {
+            0
+        };
+        let help_max_width = help_lines
+            .iter()
+            .map(|line| line.len())
+            .max()
+            .unwrap_or(0);
+
+        let horizontal_margin = if help_max_width < self.num_cols {
+            (self.num_cols - help_max_width) / 2
+        } else {
+            0
+        };
+        let mut canvas = Vec::with_capacity(self.rows() * self.num_cols);
+
+        queue!(canvas, Hide)?;
+        // Pad the top
+        for row_idx in 0..vertical_margin {
+            queue!(
+                canvas,
+                MoveTo(0, row_idx as u16),
+                Clear(ClearType::UntilNewLine)
+            )?;
+        }
+        let left_pad = " ".repeat(horizontal_margin);
+
+        let help_height = cmp::min(vertical_margin + help_lines.len(), self.rows());
+
+        // Draw the help text with syntax highlighting for the hotkeys
+        for row_idx in vertical_margin..help_height {
+            let idx = row_idx - vertical_margin;
+            queue!(canvas, MoveTo(0, row_idx as u16), Print(&left_pad))?;
+
+            let curr_line = help_lines[idx];
+            let display_line = &curr_line[..cmp::min(
+                curr_line.len(),
+                self.num_cols.saturating_sub(horizontal_margin),
+            )];
+            let mut parts = display_line.split(':');
+
+            // Print the keybinding in cyan.
+            if let Some(key_part) = parts.next() {
+                queue!(canvas, SetForegroundColor(Color::Cyan), Print(key_part))?;
+            }
+            queue!(canvas, ResetColor)?;
+
+            // Print the description in default text color.
+            if let Some(desc_part) = parts.next() {
+                queue!(canvas, Print(":"), Print(desc_part))?;
+            }
+            queue!(canvas, Clear(ClearType::UntilNewLine))?;
+        }
+        // Pad the bottom
+        for row_idx in help_height..self.rows() {
+            queue!(
+                canvas,
+                MoveTo(0, row_idx as u16),
+                Clear(ClearType::UntilNewLine)
+            )?;
+        }
+        self.write_flush(&canvas)?;
         Ok(())
     }
 

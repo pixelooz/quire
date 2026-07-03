@@ -5,7 +5,6 @@ use anyhow::Result;
 use crate::{
     buffer::{CursorDir, TextBuffer},
     command::{Action, Command, CommandResult, NoAction, TextSearch},
-    help::HELP,
     highlight::Highlighting,
     renderer::Renderer,
     status_bar::{Position, StatusBar},
@@ -344,9 +343,30 @@ where
     }
 
     fn show_help(&mut self) -> Result<()> {
-        self.renderer.set_info_msg(HELP);
+        self.renderer.render_help()?;
+        while let Some(event) = self.input.next().transpose()? {
+            match event {
+                Event::Key(seq) => {
+                    if seq.key != Key::Unknown {
+                        break;
+                    }
+                }
+                Event::Resize { cols, rows } => {
+                    self.renderer.resize(Size {
+                        width: cols,
+                        height: rows,
+                    })?;
+                    self.renderer.render_help()?;
+                    self.status_bar.redraw = true;
+                }
+            }
+        }
+        // The loop has been broken, meaning the terminal is currently showing
+        // the help text, but needs to show buffer content.
+        self.renderer.set_redraw_idx(self.renderer.rowoff);
         Ok(())
     }
+
     fn process_keypress(&mut self, seq: KeySeq) -> Result<EditStep> {
         use Key::*;
 
