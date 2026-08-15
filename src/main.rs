@@ -7,8 +7,11 @@ use clap::{Parser, Subcommand};
 
 use crate::{editor::Editor, terminal::Terminal};
 
+mod buffer;
 mod editor;
+mod lang;
 mod renderer;
+mod row;
 mod terminal;
 
 #[derive(Parser)]
@@ -28,13 +31,17 @@ enum Command {
 }
 
 fn main() -> Result<()> {
-    let _cli = Cli::parse();
+    let cli = Cli::parse();
 
     let term = Terminal::new()?;
     let size = Terminal::size()?;
 
     let event_stream = iter::from_fn(|| term.read_event().ok());
-    Editor::new(event_stream, io::stdout(), size)?.edit()?;
 
+    let mut editor = match cli.command {
+        Some(Command::Open { path }) => Editor::open(event_stream, io::stdout(), size, path)?,
+        None => Editor::new(event_stream, io::stdout(), size)?,
+    };
+    editor.edit()?;
     Ok(())
 }
