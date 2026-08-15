@@ -112,7 +112,7 @@ impl<W: Write> Renderer<W> {
         }
     }
 
-    /// Draws the rows...I mean...?
+    /// Draws the rows after an event has occurred.
     fn draw_rows(&self, writer: &mut Vec<u8>, rows: &[Row]) -> Result<()> {
         for (idx, screen_row) in (0..self.num_rows).enumerate() {
             let buffer_row = self.rowoff + screen_row;
@@ -128,12 +128,10 @@ impl<W: Write> Renderer<W> {
             let mut screen_drawn = 0;
 
             let line_num = self.rowoff + idx + 1;
+            let width = line_num.ilog10();
+            let spaces = 4 - width as usize;
 
-            if line_num < 10 {
-                queue!(writer, Print(format!("{}  ", line_num)))?;
-            } else {
-                queue!(writer, Print(format!("{} ", line_num)))?;
-            }
+            queue!(writer, Print(format!("{}{}", line_num, " ".repeat(spaces))))?;
             for ch in row.buffer().chars() {
                 let (ch_width, print_str) = if ch == '\t' {
                     let spaces = 4 - (screen_start % 4);
