@@ -3,7 +3,6 @@ use std::{
     fs::File,
     io::{self, BufRead, Write},
     path::{Path, PathBuf},
-    slice,
 };
 
 use anyhow::{Context, Result};
@@ -51,22 +50,6 @@ impl FilePath {
             path: PathBuf::from(path),
             display: path.to_string_lossy().to_string(),
         }
-    }
-}
-
-pub struct Lines<'a>(slice::Iter<'a, Row>);
-
-impl<'a> ExactSizeIterator for Lines<'a> {}
-
-impl<'a> Iterator for Lines<'a> {
-    type Item = &'a str;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next().map(|x| x.buffer())
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
     }
 }
 
@@ -119,19 +102,6 @@ impl TextBuffer {
             redraw_from: Some(0),
             ..Default::default()
         }
-    }
-
-    pub fn with_lines<T, I>(lines: I) -> Result<Self>
-    where
-        T: AsRef<str>,
-        I: Iterator<Item = T>,
-    {
-        let rows = lines
-            .map(|line| Row::new(line.as_ref()))
-            .collect::<Result<_>>()?;
-        let mut buf = Self::empty();
-        buf.rows = rows;
-        Ok(buf)
     }
 
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -232,10 +202,6 @@ impl TextBuffer {
         &self.rows
     }
 
-    pub fn set_unnamed(&mut self) {
-        self.file = None
-    }
-
     pub fn filename(&self) -> &str {
         self.file
             .as_ref()
@@ -245,10 +211,6 @@ impl TextBuffer {
 
     pub fn modified(&self) -> bool {
         self.undo_count != 0 || self.modified
-    }
-
-    pub fn lines(&self) -> Lines<'_> {
-        Lines(self.rows.iter())
     }
 
     pub fn set_file<T: Into<String>>(&mut self, path: T) {
@@ -656,19 +618,5 @@ impl TextBuffer {
                 | (Punctuation, Identifier)
                 | (Identifier, Punctuation)
         )
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn emtpy_is_empty() {
-        let empty = TextBuffer::empty();
-        dbg!(&empty);
-        let strings = vec!["thiß german text", "is", "a", "string", "iter"];
-        let with_lines = TextBuffer::with_lines(strings.iter());
-        dbg!(with_lines.unwrap());
     }
 }

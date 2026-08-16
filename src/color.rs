@@ -6,7 +6,6 @@ pub enum TextElement {
     Keyword,
     String,
     Comment,
-    Documentation,
     Number,
     Type,
     Normal,
@@ -15,6 +14,7 @@ pub enum TextElement {
     Special,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UiElement {
     Background,
@@ -71,11 +71,6 @@ fn color_for_text(element: TextElement) -> Style {
             r: 135,
             g: 141,
             b: 145,
-        }),
-        Documentation => Style::new(Color::Rgb {
-            r: 149,
-            g: 156,
-            b: 161,
         }),
         Number => Style::new(Color::Rgb {
             r: 176,

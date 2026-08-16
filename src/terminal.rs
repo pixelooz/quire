@@ -16,38 +16,6 @@ pub struct KeySeq {
     pub alt: bool,
 }
 
-// Functions used for testing
-impl KeySeq {
-    /// Functions used for testing. Returns `KeyEvent` with key initialized.
-    pub fn new(key: Key) -> Self {
-        Self {
-            ctrl: false,
-            key,
-            alt: false,
-        }
-    }
-
-    /// Functions used for testing. Returns `KeyEvent` with key initialized
-    /// and ctrl set to true.
-    pub fn ctrl(key: Key) -> Self {
-        Self {
-            ctrl: true,
-            key,
-            alt: false,
-        }
-    }
-
-    /// Functions used for testing. Returns `KeyEvent` with key initialized
-    /// and alt set to true.
-    pub fn alt(key: Key) -> Self {
-        Self {
-            ctrl: false,
-            key,
-            alt: true,
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Event {
     Key(KeySeq),

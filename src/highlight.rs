@@ -101,6 +101,7 @@ enum NumberBase {
     Bin,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, PartialEq, Clone, Copy)]
 enum ParseStep {
     Ahead(usize),
@@ -481,17 +482,6 @@ pub struct RegionHighlight {
     pub end: CursorPosition,
 }
 
-impl RegionHighlight {
-    fn contains(&self, cursor: CursorPosition) -> bool {
-        let (start, end) = (self.start, self.end);
-        if cursor.row_idx < start.row_idx || cursor.row_idx > end.row_idx {
-            return false;
-        }
-        (cursor.row_idx > start.row_idx && cursor.row_idx < end.row_idx)
-            || (cursor.col_idx >= start.col_idx && cursor.col_idx < end.col_idx)
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct Highlighting {
     lines: Vec<Vec<HighlightSpan>>,
@@ -508,10 +498,6 @@ impl Highlighting {
 
     pub fn clear_matches(&mut self) {
         self.matches.clear();
-    }
-
-    pub fn has_matches(&self) -> bool {
-        !self.matches.is_empty()
     }
 
     pub fn set_matches(&mut self, matches: Vec<RegionHighlight>) {
@@ -538,6 +524,7 @@ impl Highlighting {
         }
     }
 
+    #[allow(dead_code)]
     pub fn lang_changed(&mut self, new_lang: Language) {
         if self.rules.lang == new_lang {
             return;
@@ -622,7 +609,8 @@ impl Highlighting {
         }
         let mut hlr = Highlighter::new(self.rules);
 
-        self.lines.resize_with(rows.len(), Default::default);
+        self.lines
+            .resize_with(rows.len(), Default::default);
         let bottom = bottom.min(rows.len());
 
         for (row_idx, row) in rows.iter().enumerate().take(bottom) {

@@ -1,5 +1,6 @@
 use std::path::Path;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct LanguageMeta {
     pub extensions: &'static [&'static str],
@@ -24,6 +25,7 @@ pub enum Indent {
 }
 
 impl Language {
+    #[allow(dead_code)]
     /// Returns the language's name, extensions, and indentation settings.
     pub fn metadata(self) -> LanguageMeta {
         LanguageMeta {

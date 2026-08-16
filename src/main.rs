@@ -1,18 +1,16 @@
-#![allow(dead_code)]
-
 use crate::{editor::Editor, terminal::Terminal};
 
 use anyhow::Result;
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use env_logger::Target;
 use std::{
     fs::{self, File, OpenOptions},
     io::{self},
     iter,
+    path::PathBuf,
 };
 
 mod buffer;
-mod buffer_tests;
 mod color;
 mod command;
 mod diff;
@@ -30,20 +28,29 @@ mod terminal;
 the function does.
 */
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[derive(Parser)]
+#[command(
+    name = "quire",
+    about = "A light-weight editor for medium-weight editor"
+)]
 struct Args {
-    paths: Vec<String>,
+    #[command(subcommand)]
+    command: Option<Command>,
+}
+
+#[derive(Subcommand)]
+enum Command {
+    Open { path: Vec<PathBuf> },
 }
 
 fn setup_log_path() -> Option<File> {
     let log_path = dirs::home_dir()?
-        .join(".quill")
+        .join(".quire")
         .join("logs")
-        .join("quill.log");
+        .join("quire.log");
 
     if let Err(err) = fs::create_dir_all(log_path.parent()?) {
-        eprintln!("quill: could not create log directory: {}", err);
+        eprintln!("quire: could not create log directory: {}", err);
         return None;
     }
 
@@ -53,34 +60,33 @@ fn setup_log_path() -> Option<File> {
         .open(&log_path)
     {
         Ok(file) => {
-            eprintln!("quill: logging to {}", log_path.display());
+            eprintln!("quire: logging to {}", log_path.display());
             Some(file)
         }
         Err(err) => {
-            eprintln!("quill: could not open log file: {}", err);
+            eprintln!("quire: could not open log file: {}", err);
             None
         }
     }
 }
 
 fn main() -> Result<()> {
-    let args = Args::parse();
-
     if let Some(log_file) = setup_log_path() {
         env_logger::Builder::new()
             .target(Target::Pipe(Box::new(log_file)))
             .filter_level(log::LevelFilter::Debug)
             .init();
     }
+    let args = Args::parse();
+
     let term = Terminal::new()?;
     let size = Terminal::size()?;
 
     let event_stream = iter::from_fn(|| Some(term.read_event()));
 
-    let mut editor = if !args.paths.is_empty() {
-        Editor::open(event_stream, io::stdout(), size, &args.paths)?
-    } else {
-        Editor::new(event_stream, io::stdout(), size)?
+    let mut editor = match args.command {
+        Some(Command::Open { path }) => Editor::open(event_stream, io::stdout(), size, &path)?,
+        None => Editor::new(event_stream, io::stdout(), size)?,
     };
     editor.edit()?;
     Ok(())

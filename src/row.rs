@@ -232,14 +232,6 @@ impl Row {
         }
     }
 
-    /// `delete_char` can be used instead, double check why remove_char is needed.
-    /// The current implementation differs only in bounds check.
-    pub fn remove_char(&mut self, idx: usize) {
-        let b_idx = self.char_to_byte_idx(idx);
-        self.buffer.remove(b_idx);
-        self.update_render().unwrap();
-    }
-
     /// Removes items from the buffer within the specified indices.
     pub fn remove(&mut self, start: usize, end: usize) {
         if start < end {

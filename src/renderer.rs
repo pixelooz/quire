@@ -151,7 +151,7 @@ impl<W: Write> Renderer<W> {
             // The text grid is strictly 2 rows shorter than the window; to reserve
             // permanent space for the Status Bar (row N-1) and Message Bar (row N)
             num_rows: height.saturating_sub(2),
-            num_cols: width,
+            num_cols: width.saturating_sub(4),
             output,
             rcol_idx: 0,
             status_msg: None,
@@ -204,42 +204,10 @@ impl<W: Write> Renderer<W> {
         }
     }
 
-    pub fn cols(&self) -> usize {
-        self.num_cols
-    }
-
-    pub fn message_text(&self) -> &str {
-        self.status_msg
-            .as_ref()
-            .map(|m| m.text.as_str())
-            .unwrap_or("")
-    }
-
     pub fn force_set_cursor(&mut self, col: usize, row: usize) -> Result<()> {
         queue!(self.output, MoveTo(col as u16, row as u16), Show)?;
         self.output.flush()?;
         Ok(())
-    }
-
-    pub fn render_smoke_test(&mut self) -> Result<()> {
-        let mut canvas = Vec::with_capacity((self.num_rows + 2) * self.num_cols);
-
-        queue!(
-            canvas,
-            Hide,
-            Clear(ClearType::All),
-            MoveTo(0, 0),
-            Print("Quill Viewport Architecture: Active"),
-            MoveTo(0, 1),
-            Print(format!(
-                "Usable text grid: {} cols x {} rows",
-                self.num_cols, self.num_rows
-            )),
-            MoveTo(0, 2),
-            Print("Hardware buffer safely bound. Ready for Layer 2..."),
-            Show
-        )?;
-        self.write_flush(&canvas)
     }
 }
 
@@ -339,7 +307,7 @@ impl<W: Write> Renderer<W> {
     }
 
     pub fn render_welcome<B: Write>(&self, writer: &mut B) -> Result<()> {
-        let welcome = "Quill Editor -- Version 0.1";
+        let welcome = "Quire Editor -- Version 0.1";
 
         let (_, msg_len) = Self::trim_visual(welcome, self.num_cols);
         for row in 0..self.num_rows {
@@ -455,7 +423,7 @@ impl<W: Write> Renderer<W> {
         let redraw_idx = redraw_idx.saturating_sub(self.rowoff);
         queue!(writer, ResetColor)?;
 
-        for screen_row in redraw_idx..self.num_rows {
+        for (idx, screen_row) in (redraw_idx..self.num_rows).enumerate() {
             let buffer_row = self.rowoff + screen_row;
             queue!(writer, MoveTo(0, screen_row as u16))?;
 
@@ -473,6 +441,11 @@ impl<W: Write> Renderer<W> {
             let mut span_len = spans.first().map_or(0, |hs| hs.len);
 
             let mut prev_style: Option<color::Style> = None;
+
+            let line_num = self.rowoff + idx + 1;
+            let width = line_num.ilog10();
+            let spaces = 4 - width as usize;
+            queue!(writer, Print(format!("{}{}", line_num, " ".repeat(spaces))))?;
 
             let mut visual_col = 0;
             let mut drawn_cols = 0;
@@ -560,7 +533,7 @@ impl<W: Write> Renderer<W> {
         } else {
             0
         };
-        let screen_col = rcol_idx.saturating_sub(self.coloff) as u16;
+        let screen_col = rcol_idx.saturating_sub(self.coloff) as u16 + 5;
         let screen_row = row_idx.saturating_sub(self.rowoff) as u16;
 
         queue!(canvas, MoveTo(screen_col, screen_row), Show)?;

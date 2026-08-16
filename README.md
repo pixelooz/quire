@@ -1,4 +1,4 @@
-# Quill
+# Quire: () 
 A lightweight code editor, built because I wanted to learn how to build one.
 
 ## Status
