@@ -2,12 +2,12 @@ pub const HELP: &str = "\
     Ctrl-Q                        : Quit
     Ctrl-S                        : Save to file
     Ctrl-O                        : Open text buffer
-    Ctrl-X                        : Next text buffer
-    Alt-X                         : Previous text buffer
-    Ctrl-P or UP                  : Move cursor up
-    Ctrl-N or DOWN                : Move cursor down
-    Ctrl-F or RIGHT               : Move cursor right
-    Ctrl-B or LEFT                : Move cursor left
+    Ctrl-F                        : Next text buffer
+    Ctrl-B                        : Previous text buffer
+    Ctrl-K or UP                  : Move cursor up
+    Ctrl-J or DOWN                : Move cursor down
+    Ctrl-L or RIGHT               : Move cursor right
+    Ctrl-H or LEFT                : Move cursor left
     Ctrl-A or Alt-LEFT or HOME    : Move cursor to head of line
     Ctrl-E or Alt-RIGHT or END    : Move cursor to end of line
     Ctrl-[ or Ctrl-V or PAGE DOWN : Next page
@@ -28,4 +28,4 @@ pub const HELP: &str = "\
     Ctrl-G                        : Search text
     Ctrl-M                        : New line
     Ctrl-L                        : Refresh screen
-    Ctrl-?                        : Show this help";
+    Ctrl-? or Ctrl-7              : Show this help";
